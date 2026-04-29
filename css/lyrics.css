@@ -200,8 +200,8 @@
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active {
   opacity: 1;
   --BlurAmount: 0px !important;
-  margin-top: 2.5cqw !important;
-  margin-bottom: 2.5cqw !important;
+  /*margin-top: 2.5cqw !important;
+  margin-bottom: 2.5cqw !important;*/ /* disgusting */
 }
 
 #SpicyLyricsPage .LyricsContainer .LyricsContent .line.Active .word,

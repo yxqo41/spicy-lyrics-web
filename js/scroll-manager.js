@@ -4,6 +4,8 @@
  * Ported from revancedv2's ScrollToActiveLine.ts with proper bounce prevention.
  */
 
+import Spring from './spring.js';
+
 let userScrollTimeout = null;
 let userIsScrolling = false;
 let lastActiveElement = null;
@@ -31,6 +33,9 @@ document.addEventListener('visibilitychange', () => {
  * Initialize scroll manager on a lyrics content element.
  */
 export function initScrollManager(lyricsContent) {
+  // Prevent CSS smooth scrolling from fighting our JS spring physics
+  lyricsContent.style.scrollBehavior = 'auto';
+
   const markUserScroll = () => {
     userIsScrolling = true;
     lyricsContent.classList.add('HideLineBlur');
@@ -57,14 +62,10 @@ export function initScrollManager(lyricsContent) {
 }
 
 // Spring physics state
-const scrollSpring = {
-  position: 0,
-  velocity: 0,
-  target: 0,
+const scrollSpring = new Spring(0, 2.1, 0.82); // Frequency 2.1Hz, Damping 0.82 (Equivalent to Tension 180, Damping 22)
+const springState = {
   rafId: null,
   lastTime: null,
-  tension: 180,
-  damping: 22,
   precision: 0.5,
 };
 
@@ -82,63 +83,57 @@ function scrollIntoCenter(container, element, instant = false) {
   const clampedTarget = Math.max(0, Math.min(targetScroll, container.scrollHeight - containerHeight));
 
   if (instant) {
-    if (scrollSpring.rafId) {
-      cancelAnimationFrame(scrollSpring.rafId);
-      scrollSpring.rafId = null;
+    if (springState.rafId) {
+      cancelAnimationFrame(springState.rafId);
+      springState.rafId = null;
     }
     container._isInternalScroll = true;
     container.scrollTop = clampedTarget;
-    scrollSpring.position = clampedTarget;
-    scrollSpring.target = clampedTarget;
-    scrollSpring.velocity = 0;
+    scrollSpring.SetGoal(clampedTarget, true);
     requestAnimationFrame(() => { container._isInternalScroll = false; });
   } else {
-    scrollSpring.target = clampedTarget;
+    scrollSpring.SetGoal(clampedTarget);
     
-    if (!scrollSpring.rafId) {
-      scrollSpring.lastTime = null;
+    if (!springState.rafId) {
+      springState.lastTime = null;
       scrollSpring.position = container.scrollTop;
-      scrollSpring.rafId = requestAnimationFrame((t) => tickSpring(t, container));
+      scrollSpring.velocity = 0;
+      springState.rafId = requestAnimationFrame((t) => tickSpring(t, container));
     }
   }
 }
 
 function tickSpring(timestamp, container) {
   if (!container) {
-    scrollSpring.rafId = null;
+    springState.rafId = null;
     return;
   }
 
-  if (!scrollSpring.lastTime) {
-    scrollSpring.lastTime = timestamp;
-    scrollSpring.rafId = requestAnimationFrame((t) => tickSpring(t, container));
+  if (!springState.lastTime) {
+    springState.lastTime = timestamp;
+    springState.rafId = requestAnimationFrame((t) => tickSpring(t, container));
     return;
   }
 
-  const dt = Math.min((timestamp - scrollSpring.lastTime) / 1000, 0.064);
-  scrollSpring.lastTime = timestamp;
+  const dt = (timestamp - springState.lastTime) / 1000;
+  springState.lastTime = timestamp;
 
-  const displacement = scrollSpring.position - scrollSpring.target;
-  const acceleration = -scrollSpring.tension * displacement - scrollSpring.damping * scrollSpring.velocity;
-  
-  scrollSpring.velocity += acceleration * dt;
-  scrollSpring.position += scrollSpring.velocity * dt;
+  scrollSpring.Step(dt);
 
   container._isInternalScroll = true;
   container.scrollTop = scrollSpring.position;
 
   const settled =
-    Math.abs(scrollSpring.velocity) < scrollSpring.precision &&
-    Math.abs(scrollSpring.position - scrollSpring.target) < scrollSpring.precision;
+    Math.abs(scrollSpring.velocity) < springState.precision &&
+    Math.abs(scrollSpring.position - scrollSpring.goal) < springState.precision;
 
   if (settled) {
-    container.scrollTop = scrollSpring.target;
-    scrollSpring.position = scrollSpring.target;
-    scrollSpring.velocity = 0;
-    scrollSpring.rafId = null;
+    container.scrollTop = scrollSpring.goal;
+    scrollSpring.SetGoal(scrollSpring.goal, true);
+    springState.rafId = null;
     requestAnimationFrame(() => { container._isInternalScroll = false; });
   } else {
-    scrollSpring.rafId = requestAnimationFrame((t) => tickSpring(t, container));
+    springState.rafId = requestAnimationFrame((t) => tickSpring(t, container));
   }
 }
 
@@ -226,4 +221,3 @@ export function resetScrollManager() {
 export function isUserScrolling() {
   return userIsScrolling;
 }
-

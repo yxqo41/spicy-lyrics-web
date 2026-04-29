@@ -119,12 +119,17 @@ export async function applyLegacyBackground(bgContainer, img) {
 
   // If source is a video, update the frame periodically (10 FPS)
   if (img instanceof HTMLVideoElement) {
-    const updateFrame = async () => {
+    const updateFrame = () => {
       if (!_kawarp) return;
       _sourceCtx.drawImage(img, 0, 0, _sourceCanvas.width, _sourceCanvas.height);
-      // We use a low-quality webp data URL to satisfying the engine's loadImage(url) requirement
-      await _kawarp.loadImage(_sourceCanvas.toDataURL('image/webp', 0.1));
-      _videoUpdateTimer = setTimeout(updateFrame, 100);
+      // Use async toBlob instead of blocking the main thread with toDataURL
+      _sourceCanvas.toBlob(async (blob) => {
+        if (!_kawarp) return;
+        const url = URL.createObjectURL(blob);
+        await _kawarp.loadImage(url);
+        URL.revokeObjectURL(url);
+        _videoUpdateTimer = setTimeout(updateFrame, 100);
+      }, 'image/webp', 0.1);
     };
     _videoUpdateTimer = setTimeout(updateFrame, 100);
   }

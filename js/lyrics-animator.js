@@ -93,48 +93,86 @@ const SimpleLyricsMode_LetterEffectsStrengthConfig = {
   },
 };
 
-// ── Additional Line Animation Constants ──
-const LineYFrequency = 1.0, LineYDamping = 0.8;
-const LineOpFrequency = 1.2, LineOpDamping = 0.9;
-const LineBlurFrequency = 1.0, LineBlurDamping = 0.7;
+class SimpleSpring { // i stole that shit from my own lyrics renderer because.. ehhhh   - nurislamaibekuly
+  constructor(position, tension = 70, damping = 13) {
+    this.position = position;
+    this.velocity = 0;
+    this.target = position;
+    this.tension = tension;
+    this.damping = damping;
+  }
+
+  SetGoal(target) {
+    this.target = target;
+  }
+
+  Step(dt) {
+    const safeDt = Math.min(dt, 0.064);
+    const displacement = this.position - this.target;
+    const acceleration = -this.tension * displacement - this.damping * this.velocity;
+    this.velocity += acceleration * safeDt;
+    this.position += this.velocity * safeDt;
+    return this.position;
+  }
+}
 
 function createLineSprings() {
   return {
-    Y: new Spring(0, LineYFrequency, LineYDamping),
-    Opacity: new Spring(1, LineOpFrequency, LineOpDamping),
-    Blur: new Spring(0, LineBlurFrequency, LineBlurDamping),
+    Y: new SimpleSpring(0, 70, 10 ),
+    Opacity: new SimpleSpring(1, 70, 10),
+    Blur: new SimpleSpring(0, 70, 10),
   };
 }
 
-function updateStaggeredTargets(arr, activeIndex) {
+function updateStaggeredTargets(arr, activeIndex) { // hellooo staggered fucks :3
   if (activeIndex < 0) return;
+
+  const groupIndices = [];
+  let currentGroup = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (i > 0 && !arr[i].BGLine) {
+      currentGroup++;
+    }
+    groupIndices[i] = currentGroup;
+  }
+
+  const activeGroup = groupIndices[activeIndex];
 
   for (let i = 0; i < arr.length; i++) {
     const line = arr[i];
+    const dist = groupIndices[i] - activeGroup;
+    
     if (!line.AnimatorStoreLine) {
       line.AnimatorStoreLine = createLineSprings();
-      const initDist = i - activeIndex;
-      line.AnimatorStoreLine.Y.position = initDist * 20;
-      line.AnimatorStoreLine.Opacity.position = initDist === 0 ? 1 : 0.3;
-      line.AnimatorStoreLine.Blur.position = initDist === 0 ? 0 : 4;
+      line.AnimatorStoreLine.Y.position = dist * 40; 
+      line.AnimatorStoreLine.Opacity.position = dist === 0 ? 1 : 0.3;
+      line.AnimatorStoreLine.Blur.position = dist === 0 ? 0 : 4;
     }
 
-    const dist = i - activeIndex;
     const step = dist + 1;
-    const delay = Math.max(0, step) * 60;
+    const delay = Math.max(0, step) * 80;
 
     const applyTargets = () => {
       if (!line.AnimatorStoreLine) return;
-      line.AnimatorStoreLine.Y.SetGoal(dist === 0 ? 0 : (dist > 0 ? 10 : -10));
+
+      line.AnimatorStoreLine.Y.SetGoal(dist * 40);
       line.AnimatorStoreLine.Opacity.SetGoal(dist === 0 ? 1 : 0.35);
       const blurVal = dist === 0 ? 0 : Math.min(Math.abs(dist) * 2, 8);
       line.AnimatorStoreLine.Blur.SetGoal(blurVal);
     };
 
-    if (Math.abs(dist) > 8 || delay === 0) applyTargets();
-    else setTimeout(applyTargets, delay);
+    if (line._staggerTimeout) {
+      clearTimeout(line._staggerTimeout);
+      line._staggerTimeout = null;
+    }
+
+    if (Math.abs(dist) > 10 || delay === 0) {
+      applyTargets();
+    } else {
+      line._staggerTimeout = setTimeout(applyTargets, delay);
+    }
   }
-}
+} // pls don't fire me yxqo
 
 function easeSinOut(x) {
   return Math.sin((x * Math.PI) / 2);
@@ -185,7 +223,7 @@ function flushStyleBatch() {
 }
 
 function promoteToGPU(el) {
-  el.style.willChange = "transform, opacity, text-shadow, scale";
+  el.style.willChange = "transform, opacity, scale, filter";
   el.style.backfaceVisibility = "hidden";
 }
 
@@ -226,6 +264,7 @@ function createLetterSprings() {
   };
 }
 
+let lastActiveLineIdx = null;
 let blurringLastLine = null;
 let lastFrameTime = performance.now();
 
@@ -233,11 +272,14 @@ function applyBlur(arr, activeIndex) {
   if (!arr[activeIndex]) return;
   const max = BlurMultiplier * 5 + BlurMultiplier * 0.465;
 
-  for (let i = 0; i < arr.length; i++) {
+  const startIdx = Math.max(0, activeIndex - 15);
+  const endIdx = Math.min(arr.length, activeIndex + 15);
+
+  for (let i = startIdx; i < endIdx; i++) {
     const el = arr[i].HTMLElement;
     const distance = Math.abs(i - activeIndex);
     const blurAmount = distance === 0 ? 0 : Math.min(BlurMultiplier * distance, max);
-    const value = distance === 0 ? "0px" : `${blurAmount}px`;
+    const value = distance === 0 ? "0px" : `${blurAmount.toFixed(2)}px`;
     setStyleIfChanged(el, "--BlurAmount", value);
   }
 }
@@ -288,11 +330,12 @@ function animateSyllable(position, deltaTime) {
   const isSwipe = settingsManager.get("swipeLyrics");
 
   // Trigger staggered targets if active index changed (Simple Mode OR AML OR Swipe)
-  if ((isSimpleMode || isAML || isSwipe) && activeIdx !== -1 && activeIdx !== blurringLastLine) {
+  if ((isSimpleMode || isAML || isSwipe) && activeIdx !== -1 && activeIdx !== lastActiveLineIdx) {
     updateStaggeredTargets(arr, activeIdx);
+    lastActiveLineIdx = activeIdx;
   }
 
-  const searchIdx = activeIdx !== -1 ? activeIdx : (blurringLastLine || 0);
+  const searchIdx = activeIdx !== -1 ? activeIdx : (lastActiveLineIdx || 0);
   const offsetSearch = isSimpleMode ? 10 : 5; // Wider window for staggered motion
   const startIdx = Math.max(0, searchIdx - offsetSearch);
   const endIdx = Math.min(arr.length, searchIdx + offsetSearch + 5);
@@ -580,12 +623,12 @@ function animateLine(position, deltaTime) {
   }
 
   // Trigger staggered targets if active index changed (Simple Mode OR AML)
-  if ((isSimpleMode || isAML) && activeIdx !== -1 && activeIdx !== blurringLastLine) {
+  if ((isSimpleMode || isAML) && activeIdx !== -1 && activeIdx !== lastActiveLineIdx) {
     updateStaggeredTargets(arr, activeIdx);
-    blurringLastLine = activeIdx;
+    lastActiveLineIdx = activeIdx;
   }
 
-  const searchIdx = activeIdx !== -1 ? activeIdx : (blurringLastLine || 0);
+  const searchIdx = activeIdx !== -1 ? activeIdx : (lastActiveLineIdx || 0);
   const offsetSearch = isSimpleMode ? 10 : 5;
   const startIdx = Math.max(0, searchIdx - offsetSearch);
   const endIdx = Math.min(arr.length, searchIdx + offsetSearch + 5);
@@ -710,6 +753,7 @@ function animateLine(position, deltaTime) {
  * Reset animator state (call when loading new lyrics).
  */
 export function resetAnimator() {
+  lastActiveLineIdx = null;
   blurringLastLine = null;
   lastFrameTime = performance.now();
   _styleCache = new WeakMap();
