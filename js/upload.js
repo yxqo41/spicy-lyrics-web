@@ -386,7 +386,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetPage = document.getElementById(`page-${pageId}`);
       if (targetPage) targetPage.classList.add('active');
 
-      if (pageId === 'testdb') renderTestDB();
       if (pageId === 'listen') {
          // Reset views
          listenInitialContent.style.display = 'block';
@@ -799,117 +798,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial load
   fetchTrending();
-
-  // ── Test Database Logic ──
-  const TEST_TRACKS = [
-    { name: 'Ana', artist: 'Amr Diab', audio: 'testdb/Ana - Amr Diab.flac', ttml: 'testdb/Ana.ttml' },
-    { name: 'Aktar Wahed', artist: 'Amr Diab', audio: 'testdb/Aktar Wahed - Amr Diab.flac', ttml: 'testdb/aktarwahed.ttml' },
-    { name: 'Allem Alby', artist: 'Amr Diab', audio: 'testdb/Allem Alby - Amr Diab.flac', ttml: 'testdb/allem-alby.ttml' },
-    { name: 'Rasmaha', artist: 'Amr Diab', audio: 'testdb/Rasmaha - Amr Diab.flac', ttml: 'testdb/rasmaha.ttml' },
-    { name: 'Hozn Aly 3aly', artist: 'Tameem Youness', audio: 'testdb/حزن آلي عالي - Tameem Youness.flac', ttml: 'testdb/hoznaly3aly.ttml' },
-    { name: 'All I Want Is You', artist: 'Rebzyyx', audio: 'testdb/all I want is you - Rebzyyx, hoshie star.flac', ttml: 'testdb/alliwantisyou.ttml' },
-    { name: 'Track El Mousem', artist: 'Tameem Youness', audio: 'testdb/تراك الموسم - Tameem Youness.flac', ttml: null },
-    { name: 'Espresso', artist: 'Sabrina Carpenter', audio: 'testdb/Espresso - Sabrina Carpenter.flac', ttml: null },
-    { name: 'Tany', artist: 'Tameem Youness', audio: 'testdb/Tany - Tameem Youness.flac', ttml: null }
-  ];
-
-  function renderTestDB() {
-    const grid = document.getElementById('testdb-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    TEST_TRACKS.forEach(track => {
-      const card = document.createElement('div');
-      card.className = 'testdb-card';
-      card.innerHTML = `
-        <div class="testdb-art">
-          <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg>
-        </div>
-        <div class="testdb-info">
-          <h4>${track.name}</h4>
-          <p>${track.artist}</p>
-        </div>
-      `;
-      card.onclick = () => loadTestTrack(track, card);
-      grid.appendChild(card);
-
-      // Lazy-load artwork extraction
-      peekMetadata(track, card);
-    });
-  }
-
-  async function peekMetadata(track, card) {
-    try {
-      // Fetch just the first 1MB of the audio for metadata parsing
-      const response = await fetch(track.audio, { headers: { 'Range': 'bytes=0-1048575' } });
-      const buffer = await response.arrayBuffer();
-      const metadata = await parseAudioMetadata(buffer, track.audio);
-
-      const artEl = card.querySelector('.testdb-art');
-
-      // 1. Set Static Art as Background
-      if (metadata.artUrl) {
-        artEl.style.backgroundImage = `url(${metadata.artUrl})`;
-        artEl.innerHTML = ''; // Remove the SVG icon
-      }
-
-      // 2. Fetch and render Animated Art
-      const videoUrl = await getAnimatedArtwork(metadata.artist, metadata.album, metadata.title);
-      if (videoUrl) {
-        const video = document.createElement('video');
-        video.src = videoUrl;
-        video.autoplay = true;
-        video.loop = true;
-        video.muted = true;
-        video.playsInline = true;
-        video.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; opacity: 0; transition: opacity 0.5s;';
-
-        video.onloadeddata = () => {
-          video.style.opacity = '1';
-          artEl.style.backgroundImage = 'none';
-        };
-
-        artEl.innerHTML = '';
-        artEl.appendChild(video);
-      }
-    } catch (e) {
-      console.warn('[TestDB] Metadata peek failed:', e);
-    }
-  }
-
-  async function loadTestTrack(track, card) {
-    card.classList.add('loading');
-    try {
-      await clearQueue();
-
-      // Fetch Full Audio
-      const audioResp = await fetch(track.audio);
-      const audioBuffer = await audioResp.arrayBuffer();
-      const metadata = await parseAudioMetadata(audioBuffer, track.audio);
-
-      // Fetch TTML if exists
-      let ttmlContent = '__AUTO_FETCH__';
-      if (track.ttml) {
-        const ttmlResp = await fetch(track.ttml);
-        ttmlContent = await ttmlResp.text();
-      }
-
-      await addTrackToQueue(audioBuffer, {
-        name: track.name || metadata.title,
-        artist: track.artist || metadata.artist,
-        artUrl: metadata.artUrl || null,
-        type: 'audio/flac',
-        ttml: ttmlContent
-      });
-
-      setCurrentIndex(0);
-      window.location.href = 'player.html';
-    } catch (err) {
-      console.error('Test track load failed:', err);
-      card.classList.remove('loading');
-      alert('Failed to load test track: ' + err.message);
-    }
-  }
 
   // ── Helpers ──
   function showError(msg) {
