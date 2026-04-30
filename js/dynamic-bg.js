@@ -103,13 +103,13 @@ export async function applyLegacyBackground(bgContainer, img) {
   const canvas = document.createElement("canvas");
   canvas.style.width = "100%";
   canvas.style.height = "100%";
-  canvas.style.filter = "brightness(0.55) saturate(1.3)";
+  canvas.style.filter = "brightness(0.8) saturate(0.5)";
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
   bgContainer.appendChild(canvas);
 
   _dybg = new Dybg(canvas);
-  _dybg.BLUR_PASSES = 6;
+  _dybg.BLUR_PASSES = 5;
 
   const loadSource = () => {
     if (img instanceof HTMLVideoElement) {
