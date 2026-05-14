@@ -14,6 +14,7 @@ const SOURCE_LABELS = {
   spicy: 'Spicy AMLL Player',
   spotify: 'Spotify',
   lrclib: 'LRCLIB',
+  lyricsplus: 'LyricsPlus',
   netease: 'Netease',
   musixmatch: 'Musixmatch',
   genius: 'Genius',
@@ -285,6 +286,325 @@ function parseTimestamp(ts) {
 }
 
 // ═══════════════════════════════════════════════
+// LyricsPlus Provider
+// ═══════════════════════════════════════════════
+
+function resolveSongwriters(metadata) {
+  const songwriters = metadata?.songWriters || metadata?.songwriters;
+  return Array.isArray(songwriters) ? songwriters : [];
+}
+
+async function fetchFromLyricsPlus(songName, artistName) {
+  const trySearchWithArtist = async (artist) => {
+    try {
+      const params = new URLSearchParams({
+        title: songName,
+        artist: artist
+      });
+
+      const res = await fetch(`https://lyrics.geeked.wtf/v2/lyrics/get?${params}`, {
+        headers: {
+          'User-Agent': 'spicy-amll-player/1.0'
+        }
+      });
+
+      if (!res.ok) return null;
+      const data = await res.json();
+
+      // Handle word/syllable-level sync (type: "Word")
+      if (data.type === "Word" && data.lyrics && Array.isArray(data.lyrics)) {
+        try {
+          const lyricsData = convertLyricsPlusWordSync(data);
+          if (lyricsData) {
+            const songwriters = resolveSongwriters(data.metadata);
+            if (songwriters.length > 0) {
+              lyricsData.SongWriters = songwriters;
+            }
+            const result = {
+              lyricsData,
+              source: 'lyricsplus',
+              sourceDisplayName: 'LyricsPlus'
+            };
+            // Attach songwriter metadata at both levels for compatibility
+            if (songwriters.length > 0) {
+              result.SongWriters = songwriters;
+            }
+            return result;
+          }
+        } catch (e) {
+          console.warn('[TTMLRetriever] LyricsPlus word-sync parsing failed:', e);
+        }
+      }
+
+      // Handle line-level sync (type: "Line")
+      if (data.type === "Line" && data.lyrics && Array.isArray(data.lyrics)) {
+        try {
+          const lyricsData = convertLyricsPlusLineSync(data);
+          if (lyricsData) {
+            const songwriters = resolveSongwriters(data.metadata);
+            if (songwriters.length > 0) {
+              lyricsData.SongWriters = songwriters;
+            }
+            const result = {
+              lyricsData,
+              source: 'lyricsplus',
+              sourceDisplayName: 'LyricsPlus'
+            };
+            // Attach songwriter metadata at both levels for compatibility
+            if (songwriters.length > 0) {
+              result.SongWriters = songwriters;
+            }
+            return result;
+          }
+        } catch (e) {
+          console.warn('[TTMLRetriever] LyricsPlus line-sync parsing failed:', e);
+        }
+      }
+
+      // Fallback to plain text lyrics
+      if (data.lyrics && typeof data.lyrics === 'string' && data.lyrics.trim().length > 0) {
+        const staticLines = data.lyrics
+          .split(/\r?\n/)
+          .map(l => l.trim())
+          .filter(line => line.length > 0)
+          .map(Text => ({ Text }));
+
+        if (staticLines.length > 0) {
+          const lyricsData = { Type: 'Static', Lines: staticLines };
+          const songwriters = resolveSongwriters(data.metadata);
+          if (songwriters.length > 0) {
+            lyricsData.SongWriters = songwriters;
+          }
+          const result = {
+            lyricsData,
+            source: 'lyricsplus',
+            sourceDisplayName: 'LyricsPlus'
+          };
+          if (songwriters.length > 0) {
+            result.SongWriters = songwriters;
+          }
+          return result;
+        }
+      }
+      return null;
+    } catch (e) {
+      console.warn(`[TTMLRetriever] LyricsPlus fetch error with artist "${artist}":`, e);
+      return null;
+    }
+  };
+
+  try {
+    // Try with full artist name first
+    let result = await trySearchWithArtist(artistName);
+    if (result) return result;
+
+    // If full artist search failed or returned empty, try with first artist (before "/")
+    if (artistName.includes('/')) {
+      const firstArtist = artistName.split('/')[0].trim();
+      if (firstArtist && firstArtist !== artistName) {
+        result = await trySearchWithArtist(firstArtist);
+        if (result) return result;
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.warn('[TTMLRetriever] LyricsPlus fetch error:', e);
+    return null;
+  }
+}
+
+function convertLyricsPlusWordSync(data) {
+  const lines = data.lyrics;
+  if (!lines || lines.length === 0) return null;
+
+  // Extract agents from metadata (voice1, voice2, etc.)
+  const agentMap = buildAgentMap(data.metadata?.agents || {});
+
+  const content = lines.map(line => {
+    // Convert times from milliseconds to seconds for player format
+    const startTime = line.time / 1000;
+    const endTime = (line.time + line.duration) / 1000;
+
+    // Separate lead and background syllables
+    const leadSyllables = [];
+    const backgroundGroups = [];
+    let currentBgGroup = null;
+
+    const syllabusArray = line.syllabus || [];
+
+    syllabusArray.forEach((syl, index) => {
+      // Check if original text contains whitespace
+      const hasWhitespace = /\s/.test(syl.text);
+      
+      // If has whitespace, use as-is; otherwise trim and use IsPartOfWord logic
+      let syllableText, isPartOfWord;
+      if (hasWhitespace) {
+        syllableText = syl.text;
+        isPartOfWord = false;
+      } else {
+        syllableText = syl.text.trim();
+        // IsPartOfWord: true if there's a next syllable (continues without space)
+        isPartOfWord = index < syllabusArray.length - 1;
+      }
+      
+      const syllableObj = {
+        Text: syllableText,
+        StartTime: syl.time / 1000,
+        EndTime: (syl.time + syl.duration) / 1000,
+        IsPartOfWord: isPartOfWord
+      };
+
+      // Check for both synthetic and isBackground properties
+      const isBackground = syl.synthetic || syl.isBackground;
+
+      if (isBackground) {
+        // Start or continue background group
+        if (!currentBgGroup) {
+          currentBgGroup = {
+            StartTime: syllableObj.StartTime,
+            Syllables: []
+          };
+        }
+        currentBgGroup.Syllables.push(syllableObj);
+        currentBgGroup.EndTime = syllableObj.EndTime;
+      } else {
+        // Close current background group if one exists
+        if (currentBgGroup) {
+          backgroundGroups.push(currentBgGroup);
+          currentBgGroup = null;
+        }
+        leadSyllables.push(syllableObj);
+      }
+    });
+
+    // Close any remaining background group
+    if (currentBgGroup) {
+      backgroundGroups.push(currentBgGroup);
+    }
+
+    // Determine agent ID for this line (duet support)
+    const singerAlias = line.element?.singer;
+    const agentId = singerAlias && agentMap[singerAlias] ? agentMap[singerAlias] : null;
+
+    const lineObj = {
+      Type: 'Vocal',
+      Text: line.text,
+      Lead: {
+        StartTime: startTime,
+        EndTime: endTime,
+        Syllables: leadSyllables
+      },
+      OppositeAligned: agentId === 'v2' || agentId === 'v2000'
+    };
+
+    // Add background vocals if any
+    if (backgroundGroups.length > 0) {
+      lineObj.Background = backgroundGroups;
+    }
+
+    // Add agent ID for duet support
+    if (agentId) {
+      lineObj.AgentId = agentId;
+    }
+
+    return lineObj;
+  });
+
+  if (content.length === 0) return null;
+
+  return {
+    Type: 'Syllable',
+    StartTime: content[0].Lead.StartTime,
+    Content: content,
+    Lines: content,
+    // Store agents for the player's duet system
+    Agents: Object.values(agentMap).reduce((acc, id) => {
+      acc[id] = id === 'v2'; // v2 is opposite-aligned (right side)
+      return acc;
+    }, {})
+  };
+}
+
+function convertLyricsPlusLineSync(data) {
+  const lines = data.lyrics;
+  if (!lines || lines.length === 0) return null;
+
+  // Extract agents from metadata (voice1, voice2, etc.)
+  const agentMap = buildAgentMap(data.metadata?.agents || {});
+
+  const content = lines.map(line => {
+    // Convert times from milliseconds to seconds for player format
+    const startTime = line.time / 1000;
+    const endTime = (line.time + line.duration) / 1000;
+
+    // Determine agent ID for this line (duet support)
+    const singerAlias = line.element?.singer;
+    const agentId = singerAlias && agentMap[singerAlias] ? agentMap[singerAlias] : null;
+
+    const lineObj = {
+      Type: 'Vocal',
+      Text: line.text,
+      StartTime: startTime,
+      EndTime: endTime,
+      OppositeAligned: agentId === 'v2' || agentId === 'v2000'
+    };
+
+    // Add agent ID for duet support
+    if (agentId) {
+      lineObj.AgentId = agentId;
+    }
+
+    return lineObj;
+  });
+
+  if (content.length === 0) return null;
+
+  return {
+    Type: 'Line',
+    StartTime: content[0].StartTime,
+    Content: content,
+    Lines: content,
+    // Store agents for the player's duet system
+    Agents: Object.values(agentMap).reduce((acc, id) => {
+      acc[id] = id === 'v2'; // v2 is opposite-aligned (right side)
+      return acc;
+    }, {})
+  };
+}
+
+function buildAgentMap(agentsObj) {
+  const map = {};
+  if (!agentsObj || typeof agentsObj !== 'object') return map;
+
+  const entries = Object.entries(agentsObj);
+  let voiceIndex = 1;
+
+  for (const [alias, agentInfo] of entries) {
+    if (!agentInfo) continue;
+    
+    // Use provided agent ID or generate one
+    let agentId = agentInfo.id || agentInfo.agentId || `v${voiceIndex}`;
+    
+    // Normalize to v1, v2 format if not already
+    if (!agentId.match(/^v\d+/)) {
+      agentId = `v${voiceIndex}`;
+    }
+
+    map[alias] = agentId;
+    voiceIndex++;
+  }
+
+  // Ensure v1 exists and v2 is marked as opposite
+  if (!Object.values(map).includes('v1') && entries.length > 0) {
+    const firstAlias = entries[0][0];
+    map[firstAlias] = 'v1';
+  }
+
+  return map;
+}
+
+// ═══════════════════════════════════════════════
 // Spicy AMLL Player API
 // ═══════════════════════════════════════════════
 
@@ -423,6 +743,8 @@ export async function retrieveTTML(songName, artistName, albumName, durationSec 
         result = await fetchFromNetease(songName, artistName);
       } else if (providerId === "lrclib") {
         result = await fetchFromLRCLIB(songName, artistName, albumName, durationSec);
+      } else if (providerId === "lyricsplus") {
+        result = await fetchFromLyricsPlus(songName, artistName);
       }
 
       if (result) {

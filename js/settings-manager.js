@@ -29,6 +29,11 @@ export const LYRICS_SOURCE_PROVIDER_DEFINITIONS = {
     description: "Simple, open-source synced lyrics community.",
     id: "lrclib"
   },
+  lyricsplus: {
+    label: "LyricsPlus",
+    description: "High-quality database with community support.",
+    id: "lyricsplus"
+  },
   genius: {
     label: "Genius",
     description: "Unsynced crowd-sourced meanings and lyrics.",
@@ -36,7 +41,7 @@ export const LYRICS_SOURCE_PROVIDER_DEFINITIONS = {
   }
 };
 
-export const DEFAULT_LYRICS_SOURCE_ORDER = ["apple", "musixmatch", "lrclib", "netease"];
+export const DEFAULT_LYRICS_SOURCE_ORDER = ["lyricsplus", "apple", "musixmatch", "lrclib", "netease"];
 
 
 
