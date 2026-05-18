@@ -77,6 +77,9 @@ test.html
 upload_cli.py
 panel
 server
+server2
 verify_token.py
 hf_upload_scratch.py
 deploy_temp
+output
+deploy_temp/PROMPTS

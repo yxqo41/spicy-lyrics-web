@@ -30,9 +30,7 @@
 
     <!-- Back Button -->
     <button class="back-button" id="back-button" title="Back to upload">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-      </svg>
+      <img src="icons/back.png" alt="Back">
     </button>
 
     <!-- Content Box -->
@@ -52,16 +50,11 @@
               <div class="Artists" id="artists">—</div>
             </div>
             <div class="MetadataActions">
-              <button class="queue-button" id="btn-queue" title="Up Next">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3 17h12v-2H3v2zm0-5h12v-2H3v2zm0-5v2h12V7H3zm13 4v10l8-5-8-5z"/>
-                </svg>
+              <button class="favorite-button" id="btn-favorite" title="Favorite">
+                <img src="icons/favorite.png" alt="Favorite" id="favorite-icon" width="32" height="32">
               </button>
               <button class="options-button" id="btn-options">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                </svg>
+                <img src="icons/settings.png" id="setting-icon" alt="Settings" width="32" height="32">
               </button>
             </div>
           </div>
@@ -80,28 +73,24 @@
           <!-- Quality Badge -->
           <div class="quality-badge-container">
             <div class="quality-badge" id="quality-badge">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px;">
-                <path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-                <circle cx="12" cy="12" r="5" />
-              </svg>
-              Lossless
+              <img src="icons/lossless.png" alt="Lossless" id="quality-badge-icon" style="width: 17px; height: 14px; margin-right: 4px;">
+              <span id="quality-badge-text">Lossless</span>
             </div>
           </div>
 
           <!-- Integrated Playback Controls -->
           <div class="NowBarControls">
             <div class="playback-control shuffle" id="btn-shuffle" title="Shuffle">
-              <img src="icons/suffled.svg" alt="Shuffle" id="shuffle-icon">
+              <img src="icons/button_icon_shuffle.png" alt="Shuffle" id="shuffle-icon">
             </div>
             <div class="playback-control skip-back" id="btn-backward" title="Previous">
-              <img src="icons/backwards.svg" alt="Previous">
+              <img src="icons/rewind.png" alt="Previous">
             </div>
             <div class="playback-control play-pause" id="btn-play-pause" title="Play/Pause">
-              <img src="icons/paused.svg" alt="Play" id="play-pause-icon">
+              <img src="icons/paused.png" alt="Play" id="play-pause-icon">
             </div>
             <div class="playback-control skip-forward" id="skip-forward" title="Next">
-              <img src="icons/forwards.svg" alt="Next">
+              <img src="icons/forward.png" alt="Next">
             </div>
             <div class="playback-control repeat" id="btn-repeat" title="Repeat">
               <img src="icons/repeat.svg" alt="Repeat" id="repeat-icon">
@@ -110,12 +99,14 @@
 
           <!-- Volume Area -->
           <div class="VolumeArea">
-            <img src="icons/lower-volume.svg" class="volume-side-icon" alt="Volume Low">
+            <img src="icons/volume_low.png" class="volume-side-icon" alt="Volume Low">
             <div class="volume-slider-wrapper">
               <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="1">
             </div>
-            <img src="icons/higher-volume.svg" class="volume-side-icon" alt="Volume High">
+            <img src="icons/volume_full.png" class="volume-side-icon" alt="Volume High">
           </div>
+
+
         </div>
       </div>
 
@@ -179,6 +170,7 @@
     import { getAnimatedArtwork, applyAnimatedArt } from './js/animated-art.js';
     import VideoExporter from './js/video-exporter.js';
     import { MediaSessionManager } from './js/media-session.js';
+    import { escapeHTML } from './js/security-utils.js';
 
 
     import isRtl from './js/is-rtl.js';
@@ -278,12 +270,15 @@
         item.dataset.id = track.id;
         item.dataset.index = index;
 
+        const safeName = escapeHTML(track.name.replace(/\.[^.]+$/, ''));
+        const safeArtist = escapeHTML(track.artist || 'Unknown Artist');
+
         item.innerHTML = `
           <div class="drag-handle" style="margin-right: 12px; opacity: 0.3;">≡</div>
           <div class="pq-art" style="background-image: url('${track.artUrl || 'favicon.svg'}');"></div>
           <div class="pq-info">
-            <span class="pq-name">${track.name.replace(/\.[^.]+$/, '')}</span>
-            <span class="pq-artist">${track.artist || 'Unknown Artist'}</span>
+            <span class="pq-name">${safeName}</span>
+            <span class="pq-artist">${safeArtist}</span>
           </div>
         `;
 
@@ -388,7 +383,7 @@
             try {
               parsedLyrics = parseTTMLToLyrics(track.ttml);
               applyLyricsToUI(parsedLyrics);
-              if (sourceBadge) sourceBadge.textContent = "LYRICS: AMLL TTML";
+              if (sourceBadge) sourceBadge.textContent = "LYRICS: TTML";
             } catch (e) {
               console.error("Lyrics parse failed", e);
               showNotice("Failed to parse local lyrics");
@@ -662,6 +657,9 @@
       if (nextIdx < currentQueue.length) {
         loadTrack(nextIdx);
         player.play();
+      } else if (player.repeatMode === 1) { // Repeat All
+        loadTrack(0);
+        player.play();
       } else {
         updatePlayPauseIcon(false);
       }
@@ -687,6 +685,24 @@
         if (prev >= 0) loadTrack(prev);
       }
     };
+
+    btnRepeat.onclick = () => {
+      player.repeatMode = (player.repeatMode + 1) % 3;
+      updateRepeatUI();
+    };
+
+    function updateRepeatUI() {
+      if (player.repeatMode === 0) {
+        repeatIcon.src = 'icons/repeat.svg';
+        btnRepeat.classList.remove('active');
+      } else if (player.repeatMode === 1) {
+        repeatIcon.src = 'icons/being-repeat.svg';
+        btnRepeat.classList.add('active');
+      } else if (player.repeatMode === 2) {
+        repeatIcon.src = 'icons/being-repeat1.svg';
+        btnRepeat.classList.add('active');
+      }
+    }
 
     btnQueue.onclick = () => queuePanel.classList.toggle('active');
     queueClose.onclick = () => queuePanel.classList.remove('active');
@@ -740,7 +756,69 @@
 
     // ── Rest of the Player Utilities ──
     backButton.onclick = async () => { player.pause(); await goToUpload(); };
-    volumeSlider.oninput = (e) => player.setVolume(parseFloat(e.target.value));
+    
+    function updateVolumeSliderFill(val) {
+      volumeSlider.style.background = `linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) ${val * 100}%, rgba(255, 255, 255, 0.15) ${val * 100}%, rgba(255, 255, 255, 0.15) 100%)`;
+    }
+    
+    volumeSlider.oninput = (e) => {
+      const val = parseFloat(e.target.value);
+      player.setVolume(val);
+      updateVolumeSliderFill(val);
+    };
+
+    // AirPlay Popup Logic
+    const btnAirplay = document.getElementById('btn-airplay');
+    const airplayPopup = document.getElementById('airplay-popup');
+    const btnClosePopup = document.getElementById('btn-close-popup');
+
+    if (btnAirplay) {
+      btnAirplay.onclick = () => {
+        airplayPopup.style.display = 'flex';
+      };
+    }
+    if (btnClosePopup) {
+      btnClosePopup.onclick = () => {
+        airplayPopup.style.display = 'none';
+      };
+    }
+
+    // Lyrics Toggle Logic
+    const btnLyrics = document.getElementById('btn-lyrics');
+    const lyricsContainer = document.getElementById('lyrics-container');
+    const lyricsIcon = document.getElementById('lyrics-icon');
+    const nowBar = document.getElementById('now-bar');
+
+    if (btnLyrics) {
+      btnLyrics.onclick = () => {
+        const isHidden = lyricsContainer.classList.toggle('hidden');
+        nowBar.classList.toggle('centered', isHidden);
+        if (lyricsIcon) {
+          lyricsIcon.src = isHidden ? 'icons/lyrics.png' : 'icons/lyricson.png';
+        }
+      };
+    }
+
+    // Favorite Button Logic
+    const btnFavorite = document.getElementById('btn-favorite');
+    const favoriteIcon = document.getElementById('favorite-icon');
+    
+    if (btnFavorite) {
+      btnFavorite.onclick = () => {
+        const isFavorited = btnFavorite.classList.toggle('active');
+        if (favoriteIcon) {
+          favoriteIcon.src = isFavorited ? 'icons/favorited.png' : 'icons/favorite.png';
+        }
+        // Show popup (same as AirPlay)
+        if (airplayPopup) {
+          airplayPopup.style.display = 'flex';
+        }
+      };
+    }
+    
+    // Initialize volume slider fill
+    updateVolumeSliderFill(parseFloat(volumeSlider.value));
+
     progressBar.onclick = (e) => {
       const rect = progressBar.getBoundingClientRect();
       const pct = (e.clientX - rect.left) / rect.width;
@@ -750,8 +828,9 @@
 
     lyricsContent.onclick = (e) => {
       const target = e.target;
-      if (!target.classList.contains('line') && !target.classList.contains('word')) return;
       const lineEl = target.classList.contains('line') ? target : target.closest('.line');
+      if (!lineEl) return;
+      
       const lines = lyricsType === 'Syllable' ? LyricsObject.Types.Syllable.Lines : LyricsObject.Types.Line.Lines;
       for (const line of lines) {
         if (line.HTMLElement === lineEl) {
@@ -813,7 +892,7 @@
     };
 
     function updatePlayPauseIcon(playing) {
-      playPauseIcon.src = playing ? 'icons/play.svg' : 'icons/paused.svg';
+      playPauseIcon.src = playing ? 'icons/play.png' : 'icons/paused.png';
     }
 
     function startAnimationLoop() {
@@ -848,7 +927,45 @@
       if (parsedLyrics) applyLyricsToUI(parsedLyrics);
       // Refresh Force Scroll
       queueForceScroll();
+
+      // Update Lyrics Provider Visibility
+      const sourceBadge = document.getElementById('lyrics-source-badge');
+      if (sourceBadge) {
+        sourceBadge.style.display = settingsManager.get('hideLyricsProvider') ? 'none' : 'block';
+      }
+
+      // Update Dolby Atmos / Lossless
+      const qualityIcon = document.getElementById('quality-badge-icon');
+      const qualityText = document.getElementById('quality-badge-text');
+      if (qualityIcon && qualityText) {
+        if (settingsManager.get('dolbyAtmos')) {
+          qualityIcon.src = 'icons/dolby_atmos.png';
+          qualityText.textContent = '';
+          qualityIcon.style.width = '82px';
+          qualityIcon.style.height = '18px';
+          qualityIcon.style.marginRight = '0px';
+        } else {
+          qualityIcon.src = 'icons/lossless.png';
+          qualityText.textContent = 'Lossless';
+          qualityIcon.style.width = '17px';
+          qualityIcon.style.height = '14px';
+          qualityIcon.style.marginRight = '4px';
+        }
+      }
+
+      // Update AirPods / AirPlay
+      const airplayIcon = document.getElementById('airplay-icon');
+      if (airplayIcon) {
+        if (settingsManager.get('airPodsIcon')) {
+          airplayIcon.src = 'icons/earphone.png';
+        } else {
+          airplayIcon.src = 'icons/airplay.png';
+        }
+      }
     });
+
+    // Apply settings on load
+    window.dispatchEvent(new CustomEvent('spicy-settings-changed', { detail: settingsManager.settings }));
 
     // ── Keyboard Shortcuts ──
     document.addEventListener('keydown', (e) => {
@@ -871,6 +988,33 @@
       }
     });
   </script>
+
+  <!-- Bottom Bar -->
+  <div class="BottomBar">
+    <div class="bottom-bar-left">
+      <button class="airplay-button" id="btn-airplay" title="AirPlay">
+        <img src="icons/airplay.png" alt="AirPlay" id="airplay-icon">
+      </button>
+    </div>
+    <div class="bottom-bar-right">
+      <button class="lyrics-button" id="btn-lyrics" title="Lyrics">
+        <img src="icons/lyricson.png" alt="Lyrics" id="lyrics-icon">
+      </button>
+      <button class="queue-button" id="btn-queue" title="Up Next">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
+          <path d="M3 17h12v-2H3v2zm0-5h12v-2H3v2zm0-5v2h12V7H3zm13 4v10l8-5-8-5z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- AirPlay Popup -->
+  <div class="popup-overlay" id="airplay-popup" style="display: none;">
+    <div class="popup-content">
+      <p>hey this button doesnt do anything, its just there for aesthetics lmao</p>
+      <button class="popup-close" id="btn-close-popup">Close</button>
+    </div>
+  </div>
 </body>
 
 </html>

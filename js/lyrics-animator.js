@@ -18,7 +18,7 @@ const ScaleRange = [
 ];
 const YOffsetRange = [
   { Time: 0, Value: 1 / 100 },
-  { Time: 0.9, Value: -(1 / 60) },
+  { Time: 0.7, Value: -(1 / 20) },
   { Time: 1, Value: 0 },
 ];
 const GlowRange = [
@@ -31,8 +31,8 @@ const GlowRange = [
 const DotAnimations = {
   YOffsetDamping: 0.4,
   YOffsetFrequency: 1.25,
-  ScaleDamping: 0.6,
-  ScaleFrequency: 0.7,
+  ScaleDamping: 0.4,
+  ScaleFrequency: 1.25,
   GlowDamping: 0.5,
   GlowFrequency: 1,
   OpacityDamping: 0.5,
@@ -45,7 +45,7 @@ const DotAnimations = {
   ],
   YOffsetRange: [
     { Time: 0, Value: 0 },
-    { Time: 0.9, Value: -0.12 },
+    { Time: 0.7, Value: -0.20 },
     { Time: 1, Value: 0 },
   ],
   GlowRange: [
@@ -73,11 +73,11 @@ const DotYOffsetSpline = getSpline(DotAnimations.YOffsetRange);
 const DotGlowSpline = getSpline(DotAnimations.GlowRange);
 const DotOpacitySpline = getSpline(DotAnimations.OpacityRange);
 
-const YOffsetDamping = 0.4, YOffsetFrequency = 1.25;
+const YOffsetDamping = 0.3, YOffsetFrequency = 1.5;
 const ScaleDamping = 0.6, ScaleFrequency = 0.7;
 const GlowDamping = 0.5, GlowFrequency = 1;
 const BlurMultiplier = 2.5;
-const LetterGlowMultiplier_Opacity = 140;
+const LetterGlowMultiplier_Opacity = 123.2;
 
 const SimpleLyricsMode_LetterEffectsStrengthConfig = {
   LongerThan: 1500,
@@ -312,8 +312,8 @@ function animateSyllable(position, deltaTime) {
   let activeIdx = -1;
   for (let i = 0; i < arr.length; i++) {
     const line = arr[i];
-    const isAct = position >= line.StartTime && position <= line.EndTime;
-    const isSung = position > line.EndTime;
+    const isAct = position >= line.StartTime && position <= line.EndTime + 300;
+    const isSung = position > line.EndTime + 300;
     const status = isAct ? "Active" : (isSung ? "Sung" : "NotSung");
 
     if (line._lastAppliedStatus !== status) {
@@ -357,7 +357,7 @@ function animateSyllable(position, deltaTime) {
     const lineActive = position >= line.StartTime && position <= line.EndTime;
     const lineSung = position > line.EndTime;
 
-    if (lineActive || isSwipe) {
+    if (lineActive || lineSung || isSwipe) {
       if (blurringLastLine !== index) {
         if (!isAML && !isSwipe) applyBlur(arr, index);
         blurringLastLine = index;
@@ -485,6 +485,10 @@ function animateSyllable(position, deltaTime) {
           targetYOffset = isScrolling ? 0 : YOffsetSpline.at(pct);
           targetGlow = GlowSpline.at(pct);
           targetGradientPos = -20 + 120 * pct;
+
+          if (isAML) {
+            targetYOffset *= 1.5;
+          }
         } else if (wordSung) {
           targetScale = ScaleSpline.at(1);
           targetYOffset = isScrolling ? 0 : YOffsetSpline.at(1);
@@ -495,6 +499,11 @@ function animateSyllable(position, deltaTime) {
           targetYOffset = isScrolling ? 0 : YOffsetSpline.at(0);
           targetGlow = GlowSpline.at(0);
           targetGradientPos = -20;
+        }
+
+        if (word.Emphasis) {
+          targetScale *= 1.1;
+          targetYOffset *= 2.5;
         }
 
         word.AnimatorStore.Scale.SetGoal(targetScale);
@@ -512,9 +521,9 @@ function animateSyllable(position, deltaTime) {
         if (!word.LetterGroup) {
           word.HTMLElement.style.setProperty("--gradient-position", `${targetGradientPos.toFixed(2)}%`);
           setStyleIfChanged(word.HTMLElement, "--text-shadow-blur-radius",
-            `${(4 + 2 * curGlow).toFixed(2)}px`);
+            `${(6 + 3 * curGlow).toFixed(2)}px`);
           setStyleIfChanged(word.HTMLElement, "--text-shadow-opacity",
-            `${(curGlow * LetterGlowMultiplier_Opacity).toFixed(2)}%`);
+            `${(curGlow * LetterGlowMultiplier_Opacity * 0.4).toFixed(2)}%`);
         }
 
         if (word.LetterGroup && word.Letters) {
@@ -553,15 +562,28 @@ function animateSyllable(position, deltaTime) {
             }
 
             const basePct = activeLetterIndex !== -1 ? activeLetterPercentage : (lstate === "Sung" ? 1 : 0);
-            const baseScale = ScaleSpline.at(basePct) * (isSimpleMode ? strength.Scale : 1);
-            const baseYOffset = YOffsetSpline.at(basePct) * (isSimpleMode ? strength.YOffset : 1);
-            const baseGlow = GlowSpline.at(basePct) * (isSimpleMode ? strength.Glow : 1);
+            let baseScale = ScaleSpline.at(basePct) * (isSimpleMode ? strength.Scale : 1);
+            let baseYOffset = YOffsetSpline.at(basePct) * (isSimpleMode ? strength.YOffset : 1);
+            let baseGlow = GlowSpline.at(basePct) * (isSimpleMode ? strength.Glow : 1);
+
+            if (isAML) {
+              baseYOffset *= 1.5;
+            }
+
+            if (letter.Emphasis) {
+              baseScale *= 1.1;
+              baseYOffset *= 1.5;
+            }
 
             const restingScale = ScaleSpline.at(0);
             const restingYOffset = YOffsetSpline.at(0);
             const restingGlow = GlowSpline.at(0);
 
             let ts = restingScale + (baseScale - restingScale) * falloffY;
+            // Make non-active letters in the playing word a bit smaller
+            if (activeLetterIndex !== -1 && k !== activeLetterIndex) {
+              ts *= 0.92;
+            }
             let ty = restingYOffset + (baseYOffset - restingYOffset) * falloffY;
             let tg = restingGlow + (baseGlow - restingGlow) * falloffGlow;
 
@@ -586,6 +608,8 @@ function animateSyllable(position, deltaTime) {
             setStyleIfChanged(letter.HTMLElement, "transform",
               `translate3d(0, calc(var(--DefaultLyricsSize) * ${(cy * 2.5).toFixed(4)}), 0)`);
 
+
+
             letter.HTMLElement.style.setProperty("--gradient-position", `${tgp.toFixed(2)}%`);
 
             setStyleIfChanged(letter.HTMLElement, "--text-shadow-blur-radius",
@@ -609,8 +633,8 @@ function animateLine(position, deltaTime) {
   let activeIdx = -1;
   for (let i = 0; i < arr.length; i++) {
     const line = arr[i];
-    const isAct = position >= line.StartTime && position <= line.EndTime;
-    const isSung = position > line.EndTime;
+    const isAct = position >= line.StartTime && position <= line.EndTime + 300;
+    const isSung = position > line.EndTime + 300;
     const status = isAct ? "Active" : (isSung ? "Sung" : "NotSung");
 
     if (line._lastAppliedStatus !== status) {

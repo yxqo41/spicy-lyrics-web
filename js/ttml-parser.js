@@ -224,14 +224,15 @@ function parseBackground(element, lineStart, lineEnd) {
   const syllables = parseSyllableNodes(childNodes, lineStart, lineEnd);
   if (syllables.length === 0) return null;
 
-  syllables[0].Text = syllables[0].Text.replace(LEADING_BG_BRACKET, "");
-  const last = syllables[syllables.length - 1];
-  last.Text = last.Text.replace(TRAILING_BG_BRACKET, "");
+  // Remove parentheses from background syllables
+  syllables.forEach(s => {
+    s.Text = s.Text.replace(/\(|\)/g, "").trim();
+  });
 
   return {
     StartTime: syllables[0].StartTime,
     EndTime: syllables[syllables.length - 1].EndTime,
-    Syllables: syllables,
+    Syllables: syllables.filter(s => s.Text),
   };
 }
 
@@ -294,9 +295,36 @@ function parseParagraph(paragraph, div, body, oppositeAgents, transliterations, 
 
   applyRomanizedPieces(leadSyllables, lineKey ? transliterationPieces.get(lineKey) : undefined);
 
-  const leadText = leadSyllables.length > 0
+  let leadText = leadSyllables.length > 0
     ? buildTextFromSyllables(leadSyllables)
     : collectPlainText(plainNodes);
+
+  // Auto-detect background vocal if lead text is wrapped in parentheses
+  if (leadText.startsWith('(') && leadText.endsWith(')')) {
+    const bgSyllables = leadSyllables.length > 0 ? leadSyllables : [{
+      Text: leadText,
+      StartTime: paragraphStart,
+      EndTime: paragraphEnd,
+      IsPartOfWord: false
+    }];
+
+    // Clean parentheses from syllables
+    bgSyllables.forEach(s => {
+      s.Text = s.Text.replace(/\(|\)/g, "").trim();
+    });
+
+    const filteredBg = bgSyllables.filter(s => s.Text);
+    if (filteredBg.length > 0) {
+      background.push({
+        StartTime: filteredBg[0].StartTime,
+        EndTime: filteredBg[filteredBg.length - 1].EndTime,
+        Syllables: filteredBg,
+      });
+      leadSyllables.length = 0;
+      leadText = "";
+    }
+  }
+
   if (!leadText && background.length === 0) return null;
 
   const timedEntries = leadSyllables.length > 0

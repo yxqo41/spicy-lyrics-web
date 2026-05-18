@@ -173,7 +173,6 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,6 +181,8 @@
   transition: background 0.2s, transform 0.2s;
   border: none;
   cursor: pointer;
+  background: none;
+  /* Removed background */
 }
 
 .queue-button:hover,
@@ -401,6 +402,12 @@
   cursor: pointer;
   position: relative;
   margin-bottom: 8px;
+  transition: height 0.2s, transform 0.2s;
+}
+
+.progress-bar-wrapper:hover {
+  height: 10px;
+  transform: scaleX(1.02);
 }
 
 .progress-bar-fill {
@@ -455,12 +462,12 @@
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 0.7rem;
-  font-weight: 700;
   color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
 }
 
 /* ── Controls Area ── */
@@ -501,7 +508,12 @@
   opacity: 1;
 }
 
-.playback-control.shuffle img,
+.playback-control.shuffle img {
+  width: 37px;
+  height: 34px;
+  opacity: 0.6;
+}
+
 .playback-control.repeat img {
   width: 42px;
   height: 34px;
@@ -537,9 +549,15 @@
   width: 100%;
   height: 5px;
   appearance: none;
-  background: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%, rgba(255, 255, 255, 0.15) 100%);
   border-radius: 10px;
   outline: none;
+  transition: height 0.2s, transform 0.2s;
+}
+
+.volume-slider:hover {
+  height: 9px;
+  transform: scaleX(1.02);
 }
 
 .volume-slider::-webkit-slider-thumb {
@@ -594,10 +612,16 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
+  opacity: 1;
+  /* Make visible by default or keep hover effect */
   transition: opacity 0.3s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  border: none;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: none;
+  backdrop-filter: none;
+}
+
+.back-button img {
+  width: 10px;
+  height: auto;
 }
 
 .back-button svg {
@@ -952,7 +976,8 @@ body.is-rendering .NowBar {
   text-align: left !important;
   width: 100% !important;
   transform-origin: center;
-  transition: transform 0.2s ease-out; /* Fallback for non-JS updates */
+  transition: transform 0.2s ease-out;
+  /* Fallback for non-JS updates */
 }
 
 .sl-simple-mode .word {
@@ -1038,7 +1063,8 @@ body.is-rendering .NowBar {
 }
 
 /* ── Romanization / Translation Toggles ── */
-.romanization-toggle, .translation-toggle {
+.romanization-toggle,
+.translation-toggle {
   position: fixed;
   bottom: 50px;
   right: 24px;
@@ -1062,13 +1088,15 @@ body.is-rendering .NowBar {
   bottom: 86px;
 }
 
-.romanization-toggle:hover, .translation-toggle:hover {
+.romanization-toggle:hover,
+.translation-toggle:hover {
   color: white;
   background: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
 
-.romanization-toggle.active, .translation-toggle.active {
+.romanization-toggle.active,
+.translation-toggle.active {
   background: rgba(255, 255, 255, 0.9);
   color: black;
   border-color: transparent;
@@ -1077,7 +1105,7 @@ body.is-rendering .NowBar {
 /* ── Lyrics Source Badge ── */
 .lyrics-source-badge {
   position: fixed;
-  bottom: 24px;
+  top: 24px;
   right: 24px;
   color: rgba(255, 255, 255, 0.4);
   font-size: 0.75rem;
@@ -1240,4 +1268,180 @@ body.is-rendering .NowBar {
 .sl-simple-mode .word.past {
   opacity: 1 !important;
   color: #fff !important;
+}
+
+/* ── Bottom Bar ── */
+.BottomBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 20px 40px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: transparent;
+  backdrop-filter: none;
+  border-top: none;
+  z-index: 100;
+}
+
+.bottom-bar-left,
+.bottom-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.airplay-button,
+.lyrics-button,
+.queue-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, opacity 0.2s;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  /* Mild shadow */
+}
+
+/* ── Dolby Atmos Icon ── */
+#quality-badge-icon {
+  width: 82px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.airplay-button:hover,
+.lyrics-button:hover,
+.queue-button:hover {
+  transform: scale(1.1);
+}
+
+.airplay-button img,
+.lyrics-button img {
+  width: 22px;
+  height: 22px;
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.airplay-button:hover img,
+.lyrics-button:hover img {
+  opacity: 1;
+}
+
+.queue-button svg {
+  fill: #fff;
+  opacity: 0.8;
+}
+
+.queue-button:hover svg {
+  opacity: 1;
+}
+
+/* ── Popup ── */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(10px);
+}
+
+.popup-content {
+  background: rgba(30, 30, 30, 0.9);
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 350px;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.popup-content p {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.popup-close {
+  background: #fa243c;
+  border: none;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.popup-close:hover {
+  background: #d91c32;
+}
+
+/* ── Lyrics Container Hidden State ── */
+.LyricsContainer {
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.LyricsContainer.hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateX(50px);
+}
+
+/* ── NowBar Animations ── */
+#SpicyLyricsPage .ContentBox .NowBar {
+  transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#SpicyLyricsPage .ContentBox .NowBar.centered {
+  left: calc(50% - var(--NowBarWidth) / 2);
+}
+
+/* ── Favorite Button ── */
+.favorite-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.favorite-button:hover {
+  transform: scale(1.1);
+}
+
+.favorite-button img,
+.options-button img {
+  width: 32px;
+  height: 32px;
+}
+
+.favorite-button img {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.favorite-button:hover img {
+  opacity: 1;
+}
+
+.favorite-button.active img {
+  filter: none;
+  opacity: 1;
 }

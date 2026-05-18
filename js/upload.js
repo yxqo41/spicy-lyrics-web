@@ -4,6 +4,7 @@ import { getAnimatedArtwork } from './animated-art.js';
 import { robustFetch, fetchJson } from './network-utils.js';
 import { TTMLDownloader } from './ttml-downloader.js';
 import isRtl from './is-rtl.js';
+import { escapeHTML } from './security-utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const ttmlZone = document.getElementById('ttml-zone');
@@ -203,11 +204,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ttmlOptions += `<option value="${tfIdx}" ${isSelected ? 'selected' : ''}>${tf.name}</option>`;
       });
 
+      const safeName = escapeHTML(item.file.name);
+      const safeArtist = escapeHTML(item.artist || 'Unknown Artist');
+
       el.innerHTML = `
         <div class="drag-handle">≡</div>
         <div class="queue-item-info">
-          <span class="queue-item-name">${item.file.name}</span>
-          <span class="queue-item-meta">${item.artist || 'Unknown Artist'}</span>
+          <span class="queue-item-name">${safeName}</span>
+          <span class="queue-item-meta">${safeArtist}</span>
         </div>
         <div class="queue-pair-controls">
           <select class="ttml-select" data-index="${index}">
@@ -585,14 +589,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!trendingGrid) return;
     trendingGrid.innerHTML = songs.map(song => {
       const highResArt = song.artworkUrl100.replace('100x100', '600x600');
+      const safeName = escapeHTML(song.trackName);
+      const safeArtist = escapeHTML(song.artistName);
       return `
         <div class="trending-card animate-fade" data-id="${song.trackId}">
           <div class="trending-art">
-            <img src="${highResArt}" loading="lazy" alt="${song.trackName}">
+            <img src="${highResArt}" loading="lazy" alt="${safeName}">
           </div>
           <div class="trending-info">
-            <h4>${song.trackName}</h4>
-            <p>${song.artistName}</p>
+            <h4>${safeName}</h4>
+            <p>${safeArtist}</p>
           </div>
         </div>
       `;
@@ -610,15 +616,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderFeaturedAlbums(albums) {
     if (!albumsGrid) return;
-    albumsGrid.innerHTML = albums.map(album => `
-      <div class="album-card animate-fade" data-query="${album.collectionName} ${album.artistName}">
+    albumsGrid.innerHTML = albums.map(album => {
+      const safeName = escapeHTML(album.collectionName);
+      const safeArtist = escapeHTML(album.artistName);
+      return `
+      <div class="album-card animate-fade" data-query="${safeName} ${safeArtist}">
         <img src="${album.artworkUrl100.replace('100x100', '300x300')}" class="album-art" loading="lazy">
         <div class="album-info">
-          <h4>${album.collectionName}</h4>
-          <p>${album.artistName}</p>
+          <h4>${safeName}</h4>
+          <p>${safeArtist}</p>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     albumsGrid.querySelectorAll('.album-card').forEach(card => {
       card.onclick = async () => {
@@ -697,14 +707,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     searchGrid.innerHTML = results.map(track => {
       const highResArt = track.artworkUrl100.replace('100x100', '600x600');
+      const safeName = escapeHTML(track.trackName);
+      const safeArtist = escapeHTML(track.artistName);
       return `
         <div class="trending-card animate-fade" data-id="${track.trackId}">
           <div class="trending-art">
-             <img src="${highResArt}" loading="lazy" alt="${track.trackName}">
+             <img src="${highResArt}" loading="lazy" alt="${safeName}">
           </div>
           <div class="trending-info">
-             <h4>${track.trackName}</h4>
-             <p>${track.artistName}</p>
+             <h4>${safeName}</h4>
+             <p>${safeArtist}</p>
           </div>
         </div>
       `;
@@ -875,7 +887,7 @@ document.addEventListener('DOMContentLoaded', () => {
      
      const renderModalOptions = () => {
         playlistOptionsList.innerHTML = playlists.map(p => `
-          <div class="playlist-option" data-id="${p.id}">${p.name}</div>
+          <div class="playlist-option" data-id="${p.id}">${escapeHTML(p.name)}</div>
         `).join('') || '<p style="text-align:center; padding:10px; opacity:0.5;">No playlists created yet.</p>';
         
         playlistOptionsList.querySelectorAll('.playlist-option').forEach(opt => {
@@ -949,7 +961,7 @@ document.addEventListener('DOMContentLoaded', () => {
          <div class="playlist-icon">
            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 10h12v2H4v-2zm0-4h12v2H4V6zm0 8h8v2H4v-2zm10 0v6l5-3-5-3z" /></svg>
          </div>
-         <h4>${p.name}</h4>
+         <h4>${escapeHTML(p.name)}</h4>
          <button class="am-text-btn delete-playlist" style="margin-top:10px; font-size:0.8rem;" data-id="${p.id}">Delete</button>
        </div>
      `).join('');
@@ -989,17 +1001,21 @@ document.addEventListener('DOMContentLoaded', () => {
      if (!tracks.length) {
        playlistTracksGrid.innerHTML = '<div class="am-error-msg">Playlist is empty.</div>';
      } else {
-       playlistTracksGrid.innerHTML = tracks.map(t => `
+       playlistTracksGrid.innerHTML = tracks.map(t => {
+         const safeName = escapeHTML(t.name);
+         const safeArtist = escapeHTML(t.artist);
+         return `
          <div class="trending-card animate-fade" data-id="${t.id}">
            <div class="trending-art">
-             <img src="${t.artUrl || 'favicon.svg'}" loading="lazy" alt="${t.name}">
+             <img src="${t.artUrl || 'favicon.svg'}" loading="lazy" alt="${safeName}">
            </div>
            <div class="trending-info">
-             <h4>${t.name}</h4>
-             <p>${t.artist}</p>
+             <h4>${safeName}</h4>
+             <p>${safeArtist}</p>
            </div>
          </div>
-       `).join('');
+       `;
+       }).join('');
 
        playlistTracksGrid.querySelectorAll('.trending-card').forEach(card => {
          card.onclick = async () => {
@@ -1026,8 +1042,8 @@ document.addEventListener('DOMContentLoaded', () => {
     albumHeader.innerHTML = `
       <img src="${artSrc}" id="album-view-art" class="am-album-cover">
       <div class="am-album-details">
-        <h2 class="am-album-title">${collectionName}</h2>
-        <div class="am-album-artist">${artistName}</div>
+        <h2 class="am-album-title">${escapeHTML(collectionName)}</h2>
+        <div class="am-album-artist">${escapeHTML(artistName)}</div>
         <div class="am-album-meta">Album • 2024</div>
         <div class="am-album-desc">Enjoy this high fidelity master release on Spicy AMLL Player. Automatically synchronized with moving UI features.</div>
         <button class="am-start-btn" id="album-play-btn">Play</button>
@@ -1060,7 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
       albumTracksGrid.innerHTML = tracks.map((t, idx) => `
         <div class="am-track-row animate-fade" data-id="${t.trackId}" style="animation-delay:${idx*30}ms">
            <div class="am-track-num">${t.trackNumber}</div>
-           <div class="am-track-title">${t.trackName}</div>
+           <div class="am-track-title">${escapeHTML(t.trackName)}</div>
            <div class="am-track-duration">${millisToMinutesAndSeconds(t.trackTimeMillis)}</div>
            <svg class="am-track-more" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
               <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
@@ -1111,22 +1127,25 @@ document.addEventListener('DOMContentLoaded', () => {
        // Often artworkUrl100 of their latest song is what we use as placeholder, or we replace with large version.
        const placeholderPhoto = songs[0] ? songs[0].artworkUrl100.replace('100x100', '600x600') : 'favicon.svg';
        
-       let songsHTML = songs.map(s => `
+       let songsHTML = songs.map(s => {
+         const safeName = escapeHTML(s.trackName);
+         return `
          <div class="am-track-row" data-id="${s.trackId}">
            <img src="${s.artworkUrl100}" width="40" height="40" style="border-radius:6px; margin-right:15px;">
-           <div class="am-track-title">${s.trackName} <span style="font-size:0.7rem;color:#777;background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:4px;margin-left:6px;">E</span></div>
+           <div class="am-track-title">${safeName} <span style="font-size:0.7rem;color:#777;background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:4px;margin-left:6px;">E</span></div>
            <svg class="am-track-more" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
               <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
            </svg>
          </div>
-       `).join('');
+       `;
+       }).join('');
 
        artistViewContent.innerHTML = `
           <div class="am-artist-header">
              <img src="${placeholderPhoto}" class="am-artist-image">
              <div class="am-artist-name-row">
                  <div class="am-artist-play-btn"><svg viewBox="0 0 24 24" fill="#fff" width="24" height="24"><path d="M8 5v14l11-7z"/></svg></div>
-                 <h2 class="am-artist-name">${artistName}</h2>
+                 <h2 class="am-artist-name">${escapeHTML(artistName)}</h2>
              </div>
           </div>
           <div class="am-artist-content-grid">
@@ -1137,7 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
                    <img src="${latestAlbum.artworkUrl100.replace('100x100', '300x300')}">
                    <div style="display:flex; flex-direction:column; justify-content:center;">
                       <div style="font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; font-weight:700; margin-bottom:4px;">${new Date(latestAlbum.releaseDate).getFullYear()}</div>
-                      <div style="font-weight:700; margin-bottom:4px; font-size:1rem;">${latestAlbum.collectionName}</div>
+                      <div style="font-weight:700; margin-bottom:4px; font-size:1rem;">${escapeHTML(latestAlbum.collectionName)}</div>
                       <div style="font-size:0.8rem; color:rgba(255,255,255,0.4);">${latestAlbum.trackCount} songs</div>
                    </div>
                 </div>` : '<p style="color:rgba(255,255,255,0.4)">No recent releases found.</p>'}
@@ -1197,17 +1216,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderTrackGrid(container, tracks, isRemote = false) {
-     container.innerHTML = tracks.map(t => `
+     container.innerHTML = tracks.map(t => {
+       const safeName = escapeHTML(t.name || t.trackName);
+       const safeArtist = escapeHTML(t.artist || t.artistName);
+       return `
        <div class="trending-card animate-fade" data-id="${t.id || t.trackId}">
          <div class="trending-art">
-           <img src="${t.artUrl || t.artworkUrl100 || 'favicon.svg'}" loading="lazy" alt="${t.name || t.trackName}">
+           <img src="${t.artUrl || t.artworkUrl100 || 'favicon.svg'}" loading="lazy" alt="${safeName}">
          </div>
          <div class="trending-info">
-           <h4>${t.name || t.trackName}</h4>
-           <p>${t.artist || t.artistName}</p>
+           <h4>${safeName}</h4>
+           <p>${safeArtist}</p>
          </div>
        </div>
-     `).join('');
+     `;
+     }).join('');
 
      container.querySelectorAll('.trending-card').forEach(card => {
        card.onclick = async () => {

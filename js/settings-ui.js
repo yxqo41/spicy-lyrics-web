@@ -4,6 +4,7 @@ import { generateTTML } from "./ttml-parser.js";
 import { LyricsObject, convertToSyllable } from "./lyrics-applyer.js";
 import { GeniusService } from "./genius-service.js";
 import { getQueue, getCurrentIndex } from "./router.js";
+import { escapeHTML } from "./security-utils.js";
 
 /**
  * settings-ui.js
@@ -83,25 +84,25 @@ class SettingsUI {
     this.addInput(container, "Font name / URL", "customFont", "font-input-row", !settingsManager.get("customFontEnabled"));
 
     this.addToggle(container, "Right Align Lyrics", "rightAlignLyrics");
-    this.addToggle(container, "AML Lyrics", "swipeLyrics");
-    this.addToggle(container, "Minimal Mode (Fullscreen only)", "minimalLyricsMode");
 
-    this.addDropdown(container, "Syllable Rendering", "syllableRendering", ["Default", "Merge Words", "Reduce Splits"]);
     this.addDropdown(container, "Meme Format", "memeFormat", ["Off", "Weeb (・`ω´・)", "Gibberish (Wenomechainsama)"]);
     this.addToggle(container, "Simple Lyrics", "simpleLyricsMode");
     this.addToggle(container, "AML Stagger Scrolling", "amlAnimation");
     this.addDropdown(container, "Release Year Position", "releaseYearPosition", ["Off", "Before Artist", "After Artist"]);
     this.addToggle(container, "Show Songwriters", "showSongwriters");
     this.addToggle(container, "Force Word Sync", "forceWordSync");
+    this.addToggle(container, "Dolby Atmos Icon (Purely for Aesthetics)", "dolbyAtmos");
+    this.addToggle(container, "AirPods Icon (Purely for Aesthetics)", "airPodsIcon");
+    this.addToggle(container, "Hide Lyrics Provider Box", "hideLyricsProvider");
 
     // --- Background ---
     this.addGroup(container, "Background");
     this.addToggle(container, "Hide Dynamic Background", "hide_npv_bg");
-    this.addDropdown(container, "Static Background Type", "staticBackgroundType", ["Auto", "Album Art", "Blurred Video"]);
+    this.addDropdown(container, "Static Background Type", "staticBackgroundType", ["Auto", "Album Art"]);
     this.addToggle(container, "Animated Art Video", "coverArtAnimation");
 
     // --- Video Export ---
-    this.addGroup(container, "Video Export (Beta)");
+    this.addGroup(container, "Video Export (Beta and might not work)");
 
     const exportBtn = document.createElement("button");
     exportBtn.className = "sl-btn";
@@ -131,13 +132,6 @@ class SettingsUI {
 
     this.addToggle(container, "Ignore Musixmatch Word Sync", "ignoreMusixmatchWordSync");
     this.addToggle(container, "Prioritize Apple Music Quality", "prioritizeAppleMusicQuality");
-
-    this.addInput(container, "Musixmatch Token", "musixmatchToken");
-    const tokenRow = container.querySelector(".sl-settings-row:last-child");
-    if (tokenRow) {
-      tokenRow.querySelector("input").disabled = true;
-      tokenRow.querySelector("input").style.opacity = "0.6";
-    }
 
     // --- Audio Engine ---
     this.addGroup(container, "Audio Engine");
@@ -336,8 +330,8 @@ class SettingsUI {
         labelWrap.style.display = "flex";
         labelWrap.style.flexDirection = "column";
         labelWrap.innerHTML = `
-          <span style="font-weight:600; font-size: 14px;">${index + 1}. ${def.label}</span>
-          <span style="font-size: 11px; opacity: 0.6;">${def.description}</span>
+          <span style="font-weight:600; font-size: 14px;">${index + 1}. ${escapeHTML(def.label)}</span>
+          <span style="font-size: 11px; opacity: 0.6;">${escapeHTML(def.description)}</span>
         `;
 
         const actions = document.createElement("div");

@@ -19,6 +19,11 @@ export const LYRICS_SOURCE_PROVIDER_DEFINITIONS = {
     description: "Premium animated and time-synced lyrics.",
     id: "apple"
   },
+  custom: {
+    label: "Spicy Community",
+    description: "Lyrics contributed and synced by our Discord community.",
+    id: "custom"
+  },
   musixmatch: {
     label: "Musixmatch",
     description: "Extensive database with word-sync support.",
@@ -41,7 +46,7 @@ export const LYRICS_SOURCE_PROVIDER_DEFINITIONS = {
   }
 };
 
-export const DEFAULT_LYRICS_SOURCE_ORDER = ["lyricsplus", "apple", "musixmatch", "lrclib", "netease"];
+export const DEFAULT_LYRICS_SOURCE_ORDER = ["custom", "lyricsplus", "apple", "musixmatch", "lrclib", "netease"];
 
 
 
@@ -53,7 +58,7 @@ class SettingsManager {
       settingsOnTop: true,
       lyricsRenderer: "Spicy",
       simpleLyricsMode: false,
-      amlAnimation: false,
+      amlAnimation: true,
       minimalLyricsMode: false,
       syllableRendering: "Default", // Default, Merge Words
       staticBackground: false,
@@ -77,6 +82,9 @@ class SettingsManager {
       forceWordSync: false,
       showRomanized: false,
       showSongwriters: true,
+      dolbyAtmos: false,
+      airPodsIcon: false,
+      hideLyricsProvider: false,
       eqGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     };
 
@@ -172,7 +180,7 @@ class SettingsManager {
           const url = new URL(this.settings.customFont);
           const f = url.searchParams.get("family");
           if (f) family = f.split(":")[0].replace(/\+/g, " ");
-        } catch (e) {}
+        } catch (e) { }
 
         root.style.setProperty("--spicy-custom-font", `"${family}"`);
         body.style.fontFamily = `var(--spicy-custom-font), 'Inter', sans-serif`;

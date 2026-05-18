@@ -310,6 +310,7 @@ async function fetchFromLyricsPlus(songName, artistName) {
 
       if (!res.ok) return null;
       const data = await res.json();
+      console.log('[TTMLRetriever] LyricsPlus raw data:', data);
 
       // Handle word/syllable-level sync (type: "Word")
       if (data.type === "Word" && data.lyrics && Array.isArray(data.lyrics)) {
@@ -423,13 +424,14 @@ function convertLyricsPlusWordSync(data) {
 
   const content = lines.map(line => {
     // Convert times from milliseconds to seconds for player format
-    const startTime = line.time / 1000;
-    const endTime = (line.time + line.duration) / 1000;
+    const startTime = Math.max(0, (line.time / 1000) - 0.2);
+    const endTime = Math.max(0, ((line.time + line.duration) / 1000) - 0.2);
 
     // Separate lead and background syllables
     const leadSyllables = [];
     const backgroundGroups = [];
     let currentBgGroup = null;
+    let inBracketedSection = false;
 
     const syllabusArray = line.syllabus || [];
 
@@ -450,13 +452,26 @@ function convertLyricsPlusWordSync(data) {
       
       const syllableObj = {
         Text: syllableText,
-        StartTime: syl.time / 1000,
-        EndTime: (syl.time + syl.duration) / 1000,
+        StartTime: Math.max(0, (syl.time / 1000) - 0.2),
+        EndTime: Math.max(0, ((syl.time + syl.duration) / 1000) - 0.2),
         IsPartOfWord: isPartOfWord
       };
 
-      // Check for both synthetic and isBackground properties
-      const isBackground = syl.synthetic || syl.isBackground;
+      const sylTrimmed = syl.text.trim();
+      if (sylTrimmed.startsWith('(')) {
+        inBracketedSection = true;
+      }
+
+      // Check for both synthetic and isBackground properties, plus bracketed section
+      const isBackground = syl.synthetic || syl.isBackground || inBracketedSection;
+
+      if (inBracketedSection) {
+        syllableObj.Text = syllableObj.Text.replace('(', '').replace(')', '');
+      }
+
+      if (sylTrimmed.endsWith(')')) {
+        inBracketedSection = false;
+      }
 
       if (isBackground) {
         // Start or continue background group
@@ -535,8 +550,8 @@ function convertLyricsPlusLineSync(data) {
 
   const content = lines.map(line => {
     // Convert times from milliseconds to seconds for player format
-    const startTime = line.time / 1000;
-    const endTime = (line.time + line.duration) / 1000;
+    const startTime = Math.max(0, (line.time / 1000) - 0.2);
+    const endTime = Math.max(0, ((line.time + line.duration) / 1000) - 0.2);
 
     // Determine agent ID for this line (duet support)
     const singerAlias = line.element?.singer;
@@ -717,13 +732,7 @@ export async function retrieveTTML(songName, artistName, albumName, durationSec 
   console.log(`[TTMLRetriever] Disabled: ${JSON.stringify([...disabled])}`);
   console.log(`[TTMLRetriever] Sequential lookup: ${activeOrder.join(" -> ")}`);
 
-  // Try custom/community API first using the song ID
   const finalSongId = songId || await searchAppleTrackId(songName, artistName, albumName);
-  if (finalSongId) {
-    console.log(`[TTMLRetriever] Checking community API for track ${finalSongId}...`);
-    const customResult = await fetchFromCustomAPI(finalSongId);
-    if (customResult) return customResult;
-  }
 
   for (const providerId of activeOrder) {
     console.log(`[TTMLRetriever] Attempting ${providerId}...`);
@@ -745,6 +754,12 @@ export async function retrieveTTML(songName, artistName, albumName, durationSec 
         result = await fetchFromLRCLIB(songName, artistName, albumName, durationSec);
       } else if (providerId === "lyricsplus") {
         result = await fetchFromLyricsPlus(songName, artistName);
+      } else if (providerId === "custom") {
+        if (finalSongId) {
+          result = await fetchFromCustomAPI(finalSongId);
+        } else {
+          console.log(`[TTMLRetriever] Skipping custom API (no songId)`);
+        }
       }
 
       if (result) {
