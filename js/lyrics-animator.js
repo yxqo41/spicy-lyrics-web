@@ -312,9 +312,8 @@ function animateSyllable(position, deltaTime) {
   let activeIdx = -1;
   for (let i = 0; i < arr.length; i++) {
     const line = arr[i];
-    const isAct = position >= line.StartTime && position <= line.EndTime + 300;
-    const isSung = position > line.EndTime + 300;
-    const status = isAct ? "Active" : (isSung ? "Sung" : "NotSung");
+    const status = line.Status || (position >= line.StartTime && position <= line.EndTime + 300 ? "Active" : (position > line.EndTime + 300 ? "Sung" : "NotSung"));
+    const isAct = status === "Active";
 
     if (line._lastAppliedStatus !== status) {
       line.HTMLElement.classList.remove("Active", "Sung", "NotSung");

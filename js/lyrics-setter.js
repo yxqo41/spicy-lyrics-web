@@ -42,10 +42,31 @@ export function setLyricsTime(currentPosition, lyricsType) {
           word.Status = "NotSung";
         }
       } else {
-        line.Status = "Sung";
-        if (!line.Syllables?.Lead) continue;
-        for (const word of line.Syllables.Lead) {
-          word.Status = "Sung";
+        // currentPosition > end
+        // Find the next chronological line to check for short gaps
+        let nextLine = null;
+        let minGap = Infinity;
+        for (let j = 0; j < lines.length; j++) {
+          const l = lines[j];
+          if (l.StartTime >= end) {
+            const gap = l.StartTime - end;
+            if (gap < minGap) {
+              minGap = gap;
+              nextLine = l;
+            }
+          }
+        }
+
+        if (nextLine && minGap < 3000 && currentPosition < nextLine.StartTime) {
+          line.Status = "Active";
+        } else {
+          line.Status = "Sung";
+        }
+
+        if (line.Syllables?.Lead) {
+          for (const word of line.Syllables.Lead) {
+            word.Status = "Sung";
+          }
         }
       }
     }

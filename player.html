@@ -152,7 +152,8 @@
   <script type="module">
     import { 
       hasPlayerData, getQueue, getTrackData, getCurrentIndex, setCurrentIndex, 
-      addTrackToQueue, updateQueueOrder, getTTMLContent, getAudioBlobUrl, getAudioName, isAutoFetchMode, goToUpload 
+      addTrackToQueue, updateQueueOrder, getTTMLContent, getAudioBlobUrl, getAudioName, isAutoFetchMode, goToUpload,
+      updateTrackAmTrackId
     } from './js/router.js';
     import parseTTMLToLyrics, { parseSongwriterString } from './js/ttml-parser.js';
     import { applySyllableLyrics, applyLineLyrics, applyStaticLyrics, LyricsObject, convertToSyllable } from './js/lyrics-applyer.js';
@@ -224,6 +225,7 @@
     let animationFrameId = null;
     let songMetadata = { title: '', artist: '', album: '', artUrl: null };
     let currentQueue = [];
+    let previousLyricsSourceOrder = JSON.stringify(settingsManager.get("lyricsSourceOrder"));
     
     const videoExporter = new VideoExporter(player);
     window.addEventListener('spicy-export-video', () => {
@@ -485,6 +487,16 @@
           if (sourceBadge) {
              sourceBadge.textContent = `Lyrics: ${result.sourceDisplayName || 'Auto-fetched'}`;
           }
+
+          // Save song ID to IndexedDB if it was found and not already saved
+          if (result.songId && !amTrackId) {
+            const currentTrack = currentQueue[getCurrentIndex()];
+            if (currentTrack) {
+              console.log(`[Player] Saving found song ID ${result.songId} to IndexedDB`);
+              updateTrackAmTrackId(currentTrack.id, result.songId);
+              currentTrack.amTrackId = result.songId; // Update in memory too
+            }
+          }
         } else {
           showNotice('No lyrics found');
         }
@@ -641,6 +653,18 @@
         if (bgVideo) {
           bgVideo.remove();
           dynamicBg.className = 'spicy-dynamic-bg';
+        }
+      }
+
+      // Check if provider order changed and refetch lyrics if needed
+      const currentOrder = JSON.stringify(e.detail.lyricsSourceOrder);
+      if (currentOrder !== previousLyricsSourceOrder) {
+        previousLyricsSourceOrder = currentOrder;
+        
+        if (songMetadata && songMetadata.title) {
+          console.log('[Player] Lyrics source order changed, refetching...');
+          const currentTrack = currentQueue[getCurrentIndex()];
+          autoFetchLyrics(songMetadata, currentTrack?.amTrackId);
         }
       }
     });

@@ -294,15 +294,17 @@ function resolveSongwriters(metadata) {
   return Array.isArray(songwriters) ? songwriters : [];
 }
 
-async function fetchFromLyricsPlus(songName, artistName) {
+async function fetchFromLyricsPlus(songName, artistName, albumName, durationSec) {
   const trySearchWithArtist = async (artist) => {
     try {
       const params = new URLSearchParams({
         title: songName,
         artist: artist
       });
+      if (albumName) params.append('album', albumName);
+      if (durationSec) params.append('duration', String(Math.round(durationSec)));
 
-      const res = await fetch(`https://lyrics.geeked.wtf/v2/lyrics/get?${params}`, {
+      const res = await fetch(`https://lyricsplus.prjktla.workers.dev/v2/lyrics/get?${params}`, {
         headers: {
           'User-Agent': 'spicy-amll-player/1.0'
         }
@@ -753,7 +755,7 @@ export async function retrieveTTML(songName, artistName, albumName, durationSec 
       } else if (providerId === "lrclib") {
         result = await fetchFromLRCLIB(songName, artistName, albumName, durationSec);
       } else if (providerId === "lyricsplus") {
-        result = await fetchFromLyricsPlus(songName, artistName);
+        result = await fetchFromLyricsPlus(songName, artistName, albumName, durationSec);
       } else if (providerId === "custom") {
         if (finalSongId) {
           result = await fetchFromCustomAPI(finalSongId);
@@ -764,7 +766,7 @@ export async function retrieveTTML(songName, artistName, albumName, durationSec 
 
       if (result) {
         console.log(`[TTMLRetriever] ✓ Found lyrics via ${providerId}`);
-        return result;
+        return { ...result, songId: finalSongId };
       }
     } catch (e) {
       console.warn(`[TTMLRetriever] ${providerId} failed:`, e);

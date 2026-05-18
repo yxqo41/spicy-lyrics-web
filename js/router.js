@@ -146,6 +146,29 @@ export async function getTrackData(id) {
 }
 
 /**
+ * Update the amTrackId of a track in the database.
+ */
+export async function updateTrackAmTrackId(id, amTrackId) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('tracks', 'readwrite');
+    const store = tx.objectStore('tracks');
+    const getReq = store.get(id);
+    
+    getReq.onsuccess = () => {
+      const data = getReq.result;
+      if (data) {
+        data.amTrackId = amTrackId;
+        store.put(data);
+      }
+    };
+    
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+/**
  * Clear the entire queue and all binary data.
  */
 export async function clearQueue() {

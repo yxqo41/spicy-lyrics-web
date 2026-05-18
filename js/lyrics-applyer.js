@@ -260,27 +260,23 @@ export function applySyllableLyrics(data, lyricsContentEl) {
         word.classList.add("PartOfWord");
       }
 
-      const mergeWords = settingsManager.get("syllableRendering") === "Merge Words";
-
-      if (mergeWords) {
-        if (lead.IsPartOfWord) {
-          if (!currentWordGroup) {
-            currentWordGroup = document.createElement("span");
-            currentWordGroup.classList.add("word-group");
-            lineElem.appendChild(currentWordGroup);
-          }
-          currentWordGroup.appendChild(word);
-        } else {
-          if (currentWordGroup) {
-            currentWordGroup.appendChild(word);
-            currentWordGroup = null;
-          } else {
-            lineElem.appendChild(word);
-          }
+      // Always group syllables that are part of a word to prevent awkward line breaks
+      if (lead.IsPartOfWord) {
+        if (!currentWordGroup) {
+          currentWordGroup = document.createElement("span");
+          currentWordGroup.classList.add("word-group");
+          currentWordGroup.style.display = "inline-block";
+          currentWordGroup.style.whiteSpace = "nowrap";
+          lineElem.appendChild(currentWordGroup);
         }
+        currentWordGroup.appendChild(word);
       } else {
-        currentWordGroup = null;
-        lineElem.appendChild(word);
+        if (currentWordGroup) {
+          currentWordGroup.appendChild(word);
+          currentWordGroup = null;
+        } else {
+          lineElem.appendChild(word);
+        }
       }
     });
 
@@ -370,6 +366,8 @@ export function applySyllableLyrics(data, lyricsContentEl) {
             if (!currentBGWordGroup) {
               const group = document.createElement("span");
               group.classList.add("word-group");
+              group.style.display = "inline-block";
+              group.style.whiteSpace = "nowrap";
               bgLine.appendChild(group);
               currentBGWordGroup = group;
             }
